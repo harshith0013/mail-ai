@@ -1,110 +1,183 @@
-import { useApi } from "@/hooks/use-api";
-import { fetchDashboardSummary } from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { Mail, Tag, Bell, Archive, Star, HelpCircle } from "lucide-react";
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import api from "../lib/api";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  Mail,
+  Bell,
+  Archive,
+  AlertTriangle,
+  Sparkles,
+  Inbox,
+} from "lucide-react";
 
-interface StatCardProps {
+type Summary = {
+  total_emails: number;
+  total_classifications: number;
+  total_notifications: number;
+  archived_emails: number;
+  important_count: number;
+  uncertain_count: number;
+  review_count: number;
+  unread_notifications: number;
+};
+
+type CategoryDistribution = {
+  category: string;
+  count: number;
+};
+
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+}: {
   title: string;
   value: number;
-  icon: React.ElementType;
-  colorClass: string;
-  delay: number;
-}
-
-function StatCard({ title, value, icon: Icon, colorClass, delay }: StatCardProps) {
+  icon: any;
+}) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
-    >
-      <Card className="full-h border shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-          <div className={`p-2 rounded-lg ${colorClass}`}>
-            <Icon className="w-4 h-4" />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-3xl font-bold">{value}</div>
-        </CardContent>
-      </Card>
-    </motion.div>
+    <div className="bg-white rounded-2xl border shadow-sm p-5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">{title}</p>
+        <Icon className="w-5 h-5 text-slate-400" />
+      </div>
+      <h3 className="text-3xl font-bold mt-3 text-slate-900">{value}</h3>
+    </div>
   );
 }
 
 export default function Dashboard() {
-  const { data: summary, isLoading, error } = useApi(fetchDashboardSummary);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [distribution, setDistribution] = useState<CategoryDistribution[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  if (error) {
-    return <div className="text-destructive p-4">Error loading dashboard: {error.message}</div>;
+  const fetchDashboard = async () => {
+    const summaryRes = await api.get<Summary>("/dashboard/summary");
+    
+    const distributionRes = await api.get<CategoryDistribution[]>(
+      "/dashboard/category-distribution"
+      
+    );
+
+    setSummary(summaryRes.data);
+    setDistribution(distributionRes.data);
+    setLastUpdated(new Date().toLocaleTimeString());
+  };
+
+  useEffect(() => {
+    fetchDashboard().catch(console.error);
+  
+    const interval = setInterval(() => {
+      fetchDashboard().catch(console.error);
+    }, 15000);
+  
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!summary) {
+    return <div className="text-slate-600">Loading dashboard...</div>;
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-6"
-    >
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Overview of your Mail AI activity</p>
+        <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
+        <p className="text-slate-500 mt-1">
+          Analytics overview of your AI-powered inbox
+        </p>
+        <p className="text-xs text-slate-400 mt-2">
+    Last updated: {lastUpdated || "Not yet"}
+  </p>
       </div>
 
-      {isLoading || !summary ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-[120px] rounded-xl" />
-          ))}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="Total Emails" value={summary.total_emails} icon={Mail} />
+        <StatCard
+          title="Classifications"
+          value={summary.total_classifications}
+          icon={Sparkles}
+        />
+        <StatCard
+          title="Notifications"
+          value={summary.unread_notifications}
+          icon={Bell}
+        />
+        <StatCard
+          title="Review Queue"
+          value={summary.review_count}
+          icon={AlertTriangle}
+        />
+        <StatCard
+          title="Archived"
+          value={summary.archived_emails}
+          icon={Archive}
+        />
+        <StatCard
+          title="Important"
+          value={summary.important_count}
+          icon={Inbox}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl border shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Classification Distribution
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Emails grouped by AI category
+          </p>
+
+          <div className="h-80 mt-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={distribution}>
+                <XAxis dataKey="category" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatCard
-            title="Total Emails"
-            value={summary.total_emails}
-            icon={Mail}
-            colorClass="bg-blue-500/10 text-blue-500"
-            delay={0.1}
-          />
-          <StatCard
-            title="Classifications"
-            value={summary.total_classifications}
-            icon={Tag}
-            colorClass="bg-purple-500/10 text-purple-500"
-            delay={0.2}
-          />
-          <StatCard
-            title="Notifications"
-            value={summary.total_notifications}
-            icon={Bell}
-            colorClass="bg-orange-500/10 text-orange-500"
-            delay={0.3}
-          />
-          <StatCard
-            title="Archived Emails"
-            value={summary.archived_emails}
-            icon={Archive}
-            colorClass="bg-gray-500/10 text-gray-500"
-            delay={0.4}
-          />
-          <StatCard
-            title="Important Emails"
-            value={summary.important_count}
-            icon={Star}
-            colorClass="bg-red-500/10 text-red-500"
-            delay={0.5}
-          />
-          <StatCard
-            title="Uncertain Emails"
-            value={summary.uncertain_count}
-            icon={HelpCircle}
-            colorClass="bg-yellow-500/10 text-yellow-500"
-            delay={0.6}
-          />
+
+        <div className="bg-white rounded-2xl border shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-slate-900">
+            Category Share
+          </h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Percentage split of classifications
+          </p>
+
+          <div className="h-80 mt-6">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={distribution}
+                  dataKey="count"
+                  nameKey="category"
+                  outerRadius={110}
+                  label
+                >
+                  {distribution.map((_, index) => (
+                    <Cell key={index} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-      )}
-    </motion.div>
+      </div>
+    </div>
   );
-}
+} 

@@ -111,13 +111,10 @@ def google_callback(code: str):
         db.commit()
         db.refresh(gmail_account)
 
-        return {
-            "message": "Google login successful and saved",
-            "user_id": str(user.id),
-            "gmail_account_id": str(gmail_account.id),
-            "email": user.email,
-            "name": user.name,
-        }
+        return RedirectResponse(
+    url=f"http://localhost:5173/settings?gmail_connected=true&gmail_account_id={gmail_account.id}"
+)
 
     finally:
         db.close()
+        

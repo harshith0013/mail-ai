@@ -1,103 +1,184 @@
-import { useApi } from "@/hooks/use-api";
-import { fetchReviewQueue } from "@/lib/api";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { ListTodo, Check, X } from "lucide-react";
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { ConfidenceBar } from "@/components/ui/ConfidenceBar";
+import { useEffect, useState } from "react";
+import api from "../lib/api";
 import { Button } from "@/components/ui/Button";
+import { RefreshCw, AlertTriangle, Archive, CheckCircle } from "lucide-react";
 import { useToastStore } from "@/stores/toast-store";
 
+type ReviewItem = {
+  classification_id: string;
+  email_id: string;
+  subject: string | null;
+  sender_email: string | null;
+  category: string;
+  confidence: number;
+  suggested_action: string;
+  reason: string | null;
+  created_at: string;
+};
+
 export default function ReviewQueue() {
-  const { data: queue, isLoading, error, refetch } = useApi(fetchReviewQueue);
   const { addToast } = useToastStore();
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
-  if (error) {
-    return <div className="text-destructive p-4">Error: {error.message}</div>;
-  }
+  const [items, setItems] = useState<ReviewItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [actingId, setActingId] = useState<string | null>(null);
 
-  const handleAction = (id: string, action: 'approve' | 'reject') => {
-    // Optimistic UI or API call here. The current API doesn't have an endpoint for this yet, so just simulating
-    addToast("success", `Classification ${action}d successfully`);
-    refetch(); 
+  const fetchReviewQueue = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get<ReviewItem[]>("/review-queue/");
+      setItems(res.data);
+    } catch (err) {
+      console.error("Review queue error:", err);
+      addToast("error", "Failed to load review queue.");
+    } finally {
+      setLoading(false);
+    }
+    setLastUpdated(new Date().toLocaleTimeString());
   };
 
+  const handleAction = async (emailId: string, action: "archive" | "keep") => {
+    setActingId(emailId);
+
+    try {
+      await api.post(`/api/v1/review/${emailId}`, { action });
+
+      addToast(
+        "success",
+        action === "archive"
+          ? "Email archived successfully."
+          : "Email kept in inbox."
+      );
+
+      await fetchReviewQueue();
+    } catch (err) {
+      console.error("Review action error:", err);
+      addToast("error", "Failed to update review decision.");
+    } finally {
+      setActingId(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchReviewQueue();
+  
+    const interval = setInterval(() => {
+      fetchReviewQueue();
+    }, 15000);
+  
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Review Queue</h1>
-        <p className="text-muted-foreground mt-1">Review uncertain classifications or items requiring confirmation</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Review Queue</h1>
+          <p className="text-slate-500 mt-1">
+            Emails that need your manual decision
+          </p>
+          <p className="text-xs text-slate-400 mt-2">
+    Last updated: {lastUpdated || "Not yet"}
+  </p>
+        </div>
+
+        <Button variant="outline" onClick={fetchReviewQueue} isLoading={loading}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Refresh
+        </Button>
       </div>
 
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2].map((i) => <Skeleton key={i} className="w-full h-40 rounded-xl" />)}
+      {items.length === 0 ? (
+        <div className="bg-white border rounded-2xl shadow-sm p-10 text-center">
+          <p className="text-slate-600 font-medium">No review items 🎉</p>
+          <p className="text-sm text-slate-400 mt-2">
+            Emails marked as hold for review will appear here.
+          </p>
         </div>
-      ) : !queue || queue.length === 0 ? (
-        <EmptyState
-          icon={<ListTodo className="w-10 h-10" />}
-          title="Inbox Zero!"
-          description="There are no emails waiting for your review. The AI is confident about everything else."
-        />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {queue.map((item, i) => (
-             <motion.div
-               key={item.classification_id}
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: i * 0.05 }}
-             >
-              <Card className="hover:shadow-md transition-shadow h-full flex flex-col">
-                <CardContent className="p-6 flex-1 flex flex-col gap-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold">{item.subject || "No Subject"}</h3>
-                      <p className="text-sm text-muted-foreground">{item.sender_email}</p>
-                    </div>
-                    <Badge variant="outline">{item.category}</Badge>
-                  </div>
-                  
-                  <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Suggested Action:</span>
-                      <span className="font-medium text-foreground">{item.suggested_action.replace('_', ' ')}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-muted-foreground">
-                      <span className="w-24">Confidence:</span>
-                      <ConfidenceBar value={item.confidence} />
-                    </div>
+        <div className="space-y-4">
+          {items.map((item) => (
+            <div
+              key={item.classification_id}
+              className="bg-white border rounded-2xl shadow-sm p-5"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {item.subject || "No Subject"}
+                    </h3>
                   </div>
 
-                  <p className="text-sm text-muted-foreground italic line-clamp-2">
-                    "...{item.reason}..."
+                  <p className="text-sm text-slate-500 mt-1">
+                    {item.sender_email || "Unknown sender"}
                   </p>
+                </div>
 
-                  <div className="mt-auto pt-4 flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => handleAction(item.classification_id, 'reject')}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Reject
-                    </Button>
-                    <Button 
-                      className="flex-1"
-                      onClick={() => handleAction(item.classification_id, 'approve')}
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      Approve
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+                <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                  Needs Review
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Category</p>
+                  <p className="font-semibold text-slate-900 mt-1">
+                    {item.category}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Confidence</p>
+                  <p className="font-semibold text-slate-900 mt-1">
+                    {(item.confidence * 100).toFixed(0)}%
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-4">
+                  <p className="text-xs text-slate-500">Suggested Action</p>
+                  <p className="font-semibold text-slate-900 mt-1">
+                    {item.suggested_action}
+                  </p>
+                </div>
+              </div>
+
+              {item.reason && (
+                <p className="text-sm text-slate-500 mt-4">{item.reason}</p>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 mt-5">
+                <Button
+                  variant="outline"
+                  onClick={() => handleAction(item.email_id, "keep")}
+                  isLoading={actingId === item.email_id}
+                  disabled={actingId === item.email_id}
+                  className="gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" />
+                  Keep in Inbox
+                </Button>
+
+                <Button
+                  onClick={() => handleAction(item.email_id, "archive")}
+                  isLoading={actingId === item.email_id}
+                  disabled={actingId === item.email_id}
+                  className="gap-2"
+                >
+                  <Archive className="w-4 h-4" />
+                  Archive
+                </Button>
+              </div>
+
+              <p className="text-xs text-slate-400 mt-4">
+                Created: {item.created_at}
+              </p>
+            </div>
           ))}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

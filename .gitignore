@@ -8,3 +8,7 @@ build/
 
 .env
 .DS_Store
+
+# Local runtime data
+backend/chroma_db/
+backend/embedding_store.json
