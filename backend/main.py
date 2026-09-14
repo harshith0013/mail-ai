@@ -17,25 +17,46 @@ from app.api.routes.email_actions import router as email_actions_router
 from app.api.routes.email_summary import router as email_summary_router
 from app.api.routes.email_reply import router as email_reply_router
 from app.api.routes.semantic_search import router as semantic_search_router
+
+from app.core.config import FRONTEND_URL
 from app.services.scheduler_service import start_scheduler, stop_scheduler
 from app.services.websocket_manager import manager
 
-app = FastAPI(title="Mail AI")
+
+app = FastAPI(
+    title="Mail AI",
+    version="1.0.0",
+)
+
+
+# ---------------------------------------------------------
+# CORS
+# ---------------------------------------------------------
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+]
+
+# Add production/frontend URL from environment
+if FRONTEND_URL and FRONTEND_URL not in allowed_origins:
+    allowed_origins.append(FRONTEND_URL.rstrip("/"))
 
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+# ---------------------------------------------------------
+# Routers
+# ---------------------------------------------------------
 
 app.include_router(users_router)
 app.include_router(gmail_router)
@@ -55,10 +76,29 @@ app.include_router(email_reply_router)
 app.include_router(semantic_search_router)
 
 
+# ---------------------------------------------------------
+# Health / root endpoints
+# ---------------------------------------------------------
+
 @app.get("/")
 def root():
-    return {"message": "Mail AI running"}
+    return {
+        "message": "Mail AI running",
+        "status": "healthy",
+    }
 
+
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "service": "mail-ai-backend",
+    }
+
+
+# ---------------------------------------------------------
+# Application lifecycle
+# ---------------------------------------------------------
 
 @app.on_event("startup")
 def startup_event():
@@ -69,6 +109,10 @@ def startup_event():
 def shutdown_event():
     stop_scheduler()
 
+
+# ---------------------------------------------------------
+# WebSocket notifications
+# ---------------------------------------------------------
 
 @app.websocket("/ws/notifications")
 async def websocket_notifications(websocket: WebSocket):
@@ -82,6 +126,6 @@ async def websocket_notifications(websocket: WebSocket):
         print("WebSocket disconnected")
         manager.disconnect(websocket)
 
-    except Exception as e:
-        print(f"WebSocket error: {e}")
+    except Exception as exc:
+        print(f"WebSocket error: {exc}")
         manager.disconnect(websocket)

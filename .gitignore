@@ -1,14 +1,41 @@
+# Python
 venv/
+.venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
+# Frontend
 node_modules/
 dist/
 build/
 
+# Environment / secrets
 .env
+.env.*
+!.env.example
+
+# macOS
 .DS_Store
 
-# Local runtime data
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Local runtime / vector data
 backend/chroma_db/
 backend/embedding_store.json
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Test/cache files
+.pytest_cache/
+.coverage
+htmlcov/

@@ -1,10 +1,11 @@
+from typing import List, Literal, Optional
+
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
 
 
 class ClassificationEntities(BaseModel):
     sender_type: Literal["human", "automated", "unknown"]
-    topics: list[str]
+    topics: List[str]
     contains_financial_info: bool
     contains_calendar_request: bool
 
@@ -21,19 +22,26 @@ class ClassificationOutput(BaseModel):
         "low_priority",
         "spam_like",
         "archive_reference",
-        "uncertain"
+        "uncertain",
     ]
+
     importance: Literal["high", "medium", "low"]
+
     suggested_action: Literal[
         "keep_inbox",
         "label_only",
         "archive",
         "notify_user",
         "hold_for_review",
-        "ignore"
+        "ignore",
     ]
-    confidence: float = Field(ge=0, le=1)
+
+    confidence: float = Field(ge=0.0, le=1.0)
+
     needs_confirmation: bool
+
     deadline_at: Optional[str] = None
+
     reason: str
+
     entities: ClassificationEntities

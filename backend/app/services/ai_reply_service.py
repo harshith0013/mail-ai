@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 
 from app.core.config import GEMINI_API_KEY
 
@@ -7,9 +7,7 @@ def generate_ai_reply(subject: str, sender: str, snippet: str):
     if not GEMINI_API_KEY:
         raise ValueError("GEMINI_API_KEY is missing")
 
-    genai.configure(api_key=GEMINI_API_KEY)
-
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     prompt = f"""
 You are an AI email assistant.
@@ -20,16 +18,30 @@ Tone:
 - polite
 - clear
 - human
+- natural
 - not too long
+- do not invent information
+- do not mention that you are an AI
 
 Email:
-Subject: {subject}
-Sender: {sender}
-Snippet: {snippet}
+Subject: {subject or ""}
+Sender: {sender or ""}
+Snippet: {snippet or ""}
 
 Return only the reply text.
+Do not use Markdown.
+Do not add a subject line.
+Do not add explanations before or after the reply.
 """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=prompt,
+    )
 
-    return response.text.strip()
+    reply = response.text.strip()
+
+    if not reply:
+        raise ValueError("Gemini returned an empty reply")
+
+    return reply
