@@ -8,6 +8,7 @@ from app.core.config import (
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
     GOOGLE_REDIRECT_URI,
+    FRONTEND_URL,
 )
 from app.core.database import SessionLocal
 from app.models.user import User
@@ -112,7 +113,7 @@ def google_callback(code: str):
         db.refresh(gmail_account)
 
         return RedirectResponse(
-    url=f"http://localhost:5173/settings?gmail_connected=true&gmail_account_id={gmail_account.id}"
+    url=f"{FRONTEND_URL.rstrip('/')}/settings?gmail_connected=true&gmail_account_id={gmail_account.id}"
 )
 
     finally:
