@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import api from "../lib/api";
+import api, { WS_BASE_URL } from "../lib/api";
 import { Button } from "@/components/ui/Button";
 import { Bell, CheckCircle, XCircle, RefreshCw } from "lucide-react";
 import { useToastStore } from "@/stores/toast-store";
@@ -80,7 +80,7 @@ export default function Notifications() {
     let closedByUs = false;
 
     const connect = () => {
-      socket = new WebSocket("ws://127.0.0.1:8000/ws/notifications");
+      socket = new WebSocket(`${WS_BASE_URL}/ws/notifications`);
 
       socket.onopen = () => {
         console.log("Connected to Notification WebSocket");
@@ -95,6 +95,7 @@ export default function Notifications() {
               "success",
               data.message || "New notification received."
             );
+
             fetchNotificationsRef.current();
           }
         } catch (error) {
@@ -151,7 +152,9 @@ export default function Notifications() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Notifications</h1>
+          <h1 className="text-3xl font-bold text-slate-900">
+            Notifications
+          </h1>
 
           <p className="text-slate-500 mt-1">
             Action-required messages from your AI assistant
@@ -174,7 +177,10 @@ export default function Notifications() {
 
       {visibleNotifications.length === 0 ? (
         <div className="bg-white border rounded-2xl shadow-sm p-10 text-center">
-          <p className="text-slate-600 font-medium">No active notifications 🎉</p>
+          <p className="text-slate-600 font-medium">
+            No active notifications 🎉
+          </p>
+
           <p className="text-sm text-slate-400 mt-2">
             Important emails and confirmation-needed items will appear here.
           </p>
@@ -192,12 +198,15 @@ export default function Notifications() {
                 <div>
                   <div className="flex items-center gap-2">
                     <Bell className="w-5 h-5 text-blue-500" />
+
                     <h3 className="text-lg font-semibold text-slate-900">
                       {n.title}
                     </h3>
                   </div>
 
-                  <p className="text-sm text-slate-500 mt-2">{n.message}</p>
+                  <p className="text-sm text-slate-500 mt-2">
+                    {n.message}
+                  </p>
 
                   <p className="text-xs text-slate-400 mt-3">
                     Created: {n.created_at}
@@ -243,4 +252,4 @@ export default function Notifications() {
       )}
     </div>
   );
-} 
+}

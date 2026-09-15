@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Copy, Sparkles, FileText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function EmailDetailModal({
   email,
@@ -22,7 +23,7 @@ export default function EmailDetailModal({
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/email-summary/${email.email_id}`,
+        `${API_BASE_URL}/email-summary/${email.email_id}`,
         { method: "POST" }
       );
 
@@ -45,7 +46,7 @@ export default function EmailDetailModal({
 
     try {
       const res = await fetch(
-        `http://127.0.0.1:8000/email-reply/${email.email_id}`,
+        `${API_BASE_URL}/email-reply/${email.email_id}`,
         { method: "POST" }
       );
 
@@ -177,9 +178,14 @@ export default function EmailDetailModal({
 
           <div className="border rounded-2xl p-5 bg-slate-50">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="font-bold text-slate-900">AI Suggested Reply</h3>
+              <h3 className="font-bold text-slate-900">
+                AI Suggested Reply
+              </h3>
 
-              <Button onClick={generateReply} isLoading={isGeneratingReply}>
+              <Button
+                onClick={generateReply}
+                isLoading={isGeneratingReply}
+              >
                 <Sparkles className="w-4 h-4 mr-2" />
                 Generate Reply
               </Button>

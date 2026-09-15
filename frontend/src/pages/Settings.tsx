@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Mail, RefreshCw, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useToastStore } from "@/stores/toast-store";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function Settings() {
   const { addToast } = useToastStore();
@@ -40,17 +41,18 @@ export default function Settings() {
   }, [addToast]);
 
   const handleConnect = () => {
-    window.location.href = "http://127.0.0.1:8000/api/v1/auth/google/login";
+    window.location.href = `${API_BASE_URL}/api/v1/auth/google/login`;
   };
 
   const handleSync = async () => {
     setIsSyncing(true);
 
     try {
-      let accountId = gmailAccountId || localStorage.getItem("gmail_account_id");
+      let accountId =
+        gmailAccountId || localStorage.getItem("gmail_account_id");
 
       if (!accountId) {
-        const res = await fetch("http://127.0.0.1:8000/gmail-accounts/");
+        const res = await fetch(`${API_BASE_URL}/gmail-accounts/`);
 
         if (!res.ok) {
           addToast("error", "Unable to fetch Gmail accounts.");
@@ -71,7 +73,7 @@ export default function Settings() {
       }
 
       const syncRes = await fetch(
-        `http://127.0.0.1:8000/api/v1/gmail/sync/${accountId}`
+        `${API_BASE_URL}/api/v1/gmail/sync/${accountId}`
       );
 
       const result = await syncRes.json();
@@ -137,22 +139,22 @@ export default function Settings() {
               </div>
             )}
 
-{gmailAccountId && (
-  <div className="space-y-1">
-    <p className="text-xs text-muted-foreground">
-      Account ID: {gmailAccountId}
-    </p>
+            {gmailAccountId && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  Account ID: {gmailAccountId}
+                </p>
 
-    <p className="text-xs text-muted-foreground">
-      Last synced: {lastSynced || "Not yet"}
-    </p>
+                <p className="text-xs text-muted-foreground">
+                  Last synced: {lastSynced || "Not yet"}
+                </p>
 
-    <p className="text-xs text-muted-foreground">
-      Auto Sync: {autoSyncEnabled ? "Enabled — every 5 minutes" : "Disabled"}
-    </p>
-  </div>
-)}
-        
+                <p className="text-xs text-muted-foreground">
+                  Auto Sync:{" "}
+                  {autoSyncEnabled ? "Enabled — every 5 minutes" : "Disabled"}
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={handleConnect} className="gap-2">
