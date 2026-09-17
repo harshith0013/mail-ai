@@ -6,6 +6,8 @@ import Notifications from "@/pages/Notifications";
 import ReviewQueue from "@/pages/ReviewQueue";
 import Settings from "@/pages/Settings";
 import { AnimatePresence } from "framer-motion";
+import Privacy from "@/pages/Privacy";
+import Terms from "@/pages/Terms";
 
 export default function App() {
   return (
@@ -18,6 +20,8 @@ export default function App() {
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/review-queue" element={<ReviewQueue />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
           </Routes>
         </AnimatePresence>
       </Layout>
